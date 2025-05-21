@@ -1,4 +1,4 @@
-#imports
+# Imports
 import os
 import json
 import time
@@ -43,14 +43,14 @@ def check_assistant_exists(client, assistant_id):
         return False, None
 
 
-# extract text from docx document
+# Extract text from docx document
 def extract_text_from_docx(path, link_map=None):
     from docx import Document
     doc = Document(path)
     text = '\n'.join([p.text for p in doc.paragraphs])
-    filename = os.path.splitext(os.path.basename(path))[0] # take name of file without .docx (for example QandA.docx --> QandA)
+    filename = os.path.splitext(os.path.basename(path))[0] # Take name of file without .docx (for example QandA.docx --> QandA)
 
-    # classify documents in formats a1,a2,b1,c1 etc as documents with informations from concurrents, rest as fidelidade documents
+    # Classify documents in formats a1,a2,b1,c1 etc as documents with informations from concurrents, rest as fidelidade documents
     def is_fidelidade_document(name):
         import re
         if re.match(r"^[a-zA-Z]\d+$", name):
@@ -59,21 +59,21 @@ def extract_text_from_docx(path, link_map=None):
 
     categoria = "Fidelidade" if is_fidelidade_document(filename) else "Concorrente"
 
-    #     #IMPORTANT SO THE MODEL KNOW THE NAMES OF EACH DOCUMENT USED
-    header = (f"Document Name: {filename}\nCategoria: {categoria}\n") * 50 # add this name 50 times at beginning of text of document (so it surely appears in batch used by model)
-    link = link_map.get(filename) if link_map else None   # get link from linkmap
-    link_block = (f"Fonte: {link}\n") * 50 if link else "" # add this link 50 times at beginning after the 50x names, so model surely has acess to link
+    #     IMPORTANT SO THE MODEL KNOW THE NAMES OF EACH DOCUMENT USED
+    header = (f"Document Name: {filename}\nCategoria: {categoria}\n") * 50 # Add this name 50 times at beginning of text of document (so it surely appears in batch used by model)
+    link = link_map.get(filename) if link_map else None   # Get link from linkmap
+    link_block = (f"Fonte: {link}\n") * 50 if link else "" # Add this link 50 times at beginning after the 50x names, so model surely has acess to link
 
     return f"{header}\n{text}\n{link_block}"
 
     
-# extract text from pdf document
+# Extract text from pdf document
 def extract_text_from_pdf(path, link_map=None):
     doc = fitz.open(path)
     text = '\n'.join([page.get_text().strip() for page in doc])
-    filename = os.path.splitext(os.path.basename(path))[0]  # take name of file without .pdf (for example a1.pdf --> a1)
+    filename = os.path.splitext(os.path.basename(path))[0]  # Take name of file without .pdf (for example a1.pdf --> a1)
 
-    # classify documents in formats a1,a2,b1,c1 etc as documents with informations from concurrents, rest as fidelidade documents
+    # Classify documents in formats a1,a2,b1,c1 etc as documents with informations from concurrents, rest as fidelidade documents
     def is_fidelidade_document(name):
         import re
         if re.match(r"^[a-zA-Z]\d+$", name):
@@ -83,10 +83,10 @@ def extract_text_from_pdf(path, link_map=None):
     categoria = "Fidelidade" if is_fidelidade_document(filename) else "Concorrente"
 
     #     #IMPORTANT SO THE MODEL KNOW THE NAMES OF EACH DOCUMENT USED
-    header = (f"Document Name: {filename}\nCategoria: {categoria}\n") * 50 # add this name 50 times at beginning of text of document (so it surely appears in batch used by model)
+    header = (f"Document Name: {filename}\nCategoria: {categoria}\n") * 50 # Add this name 50 times at beginning of text of document (so it surely appears in batch used by model)
 
-    link = link_map.get(filename) if link_map else None   # get link from linkmap
-    link_block = (f"Fonte: {link}\n") * 50 if link else ""  # add this link 50 times at beginning after the 50x names, so model surely has acess to link
+    link = link_map.get(filename) if link_map else None   # Get link from linkmap
+    link_block = (f"Fonte: {link}\n") * 50 if link else ""  # Add this link 50 times at beginning after the 50x names, so model surely has acess to link
 
     return f"{header}\n{text}\n{link_block}"
 
@@ -96,17 +96,17 @@ def find_documents(folder="documents"):
     docx_files = []
     for root, _, files in os.walk(folder):
         for file in files:
-            if file.startswith("~$"):  # naturally generated temporary files (ignore)
+            if file.startswith("~$"):  # Naturally generated temporary files (ignore)
                 continue
-            if file.lower().endswith(".pdf"): # if pdf, append to list with pdf documents to be loaded
+            if file.lower().endswith(".pdf"): # If pdf, append to list with pdf documents to be loaded
                 pdf_files.append(os.path.join(root, file))
-            elif file.lower().endswith(".docx"):   # if docx, append to list with docx documents to be loaded
+            elif file.lower().endswith(".docx"):   # If docx, append to list with docx documents to be loaded
                 docx_files.append(os.path.join(root, file))
     return pdf_files, docx_files
 
 
 
-# main function to load and upload files
+# Main function to load and upload files
 def load_and_upload_files(client, link_map=None):
     print("Searching './documents' for PDF and DOCX files...")
     pdf_files, docx_files = find_documents("documents")
@@ -150,10 +150,6 @@ def load_and_upload_files(client, link_map=None):
     print("Vector store saved.")
 
     return vector_store
-
-
-
-
 
 
 # Function to add a message to the thread
