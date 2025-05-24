@@ -1,5 +1,6 @@
 # Imports
 import os
+import re
 import json
 import time
 import pandas as pd
@@ -182,6 +183,8 @@ def display_messages(client, thread, message, displayedMessagesIDs):
                         # Text message
                         if  messageType=='text':
                             content = 'Assistant: ' + answer['content'][0]['text']['value']
+                            content = re.sub(r"【.*?】", "", content)
+
                             
                             # Check if there are links for file downloads
                             file_link = None
