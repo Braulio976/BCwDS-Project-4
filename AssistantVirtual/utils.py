@@ -160,8 +160,8 @@ def add_message_to_thread(client, thread_id, user_message):
         role="user",
         content=user_message
     )
+    print(f"Mensagem adicionada ao thread {thread_id}, ID da mensagem: {message.id}")
     return message
-
 
 # Function to display messages not displayed yet
 def display_messages(client, thread, message, displayedMessagesIDs):
@@ -218,24 +218,27 @@ def display_messages(client, thread, message, displayedMessagesIDs):
                         continue
 
 
-def send_message_to_assistant(client, thread, assistant, user_input, displayedMessagesIDs):
+def send_message_to_assistant(client, thread, assistant, user_input, prompt_rules, displayedMessagesIDs):
     import time
 
-    print("You:", user_input)
-    print("Thinking...")
+    print("User input:", user_input)
+    full_prompt = f"{prompt_rules}\n\nUser question: {user_input}"
+    print("Full prompt enviado ao thread:", full_prompt)
 
-    # Adiciona a mensagem do user (não precisa das regras no prompt)
-    message = add_message_to_thread(client, thread.id, user_input)
+    add_message_to_thread(client, thread.id, full_prompt)
 
-    # Inicia o run
     run = client.beta.threads.runs.create(
         thread_id=thread.id,
         assistant_id=assistant.id
     )
+    print("Run criado, ID:", run.id)
 
     while run.status in ['queued', 'in_progress', 'cancelling']:
+        print("Status do run:", run.status)
         time.sleep(1)
         run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+
+    print("Run finalizado com status:", run.status)
 
     if run.status == 'completed':
         messages = client.beta.threads.messages.list(thread_id=thread.id).data
@@ -243,15 +246,16 @@ def send_message_to_assistant(client, thread, assistant, user_input, displayedMe
 
         if assistant_msgs:
             last_msg = assistant_msgs[-1]
-
             full_text = ""
             for block in last_msg.content:
                 if block.type == "text":
                     full_text += block.text.value + "\n"
+            print("Resposta do assistente:", full_text.strip())
             return full_text.strip()
-
-    elif run.status == 'requires_action':
-        return "O assistente precisa de ações adicionais."
+        else:
+            print("Nenhuma mensagem do assistente encontrada.")
+            return "Sem resposta do assistente."
     else:
-        return f"Ocorreu um erro. Estado: {run.status}"
+        print(f"Erro ou estado inesperado: {run.status}")
+        return f"Erro: estado do run {run.status}"
 

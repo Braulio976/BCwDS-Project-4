@@ -1,9 +1,5 @@
 import gradio as gr
 from openai import AzureOpenAI
-import os
-import pickle
-import json
-
 from utils import (
     create_assistant,
     create_thread,
@@ -11,72 +7,83 @@ from utils import (
     load_and_upload_files,
     send_message_to_assistant
 )
+import os
+import pickle
+import json
 
-# --- Initial Configuration ---
-API_KEY = 'EPg5Wj22q1CfEPQaVw3L6kVk5NVPSFOjKpNfC9mNLGr5rH5vFefFJQQJ99BDACYeBjFXJ3w3AAABACOGZ80v'
-ENDPOINT = 'https://ai-bcds.openai.azure.com/'
-ASSISTANT_FILENAME = 'AssistantID.TXT'
-VECTOR_DATA_PATH = 'vector_store.pkl'
+# Configurações iniciais
+api_key = 'yourAPIKey'
+endpoint = 'https://ai-bcds.openai.azure.com/'
+assistantFilename = 'AssistantID.TXT'
+vector_data = 'vector_store.pkl'
 
-# --- Initialize Azure OpenAI client ---
+# Cliente Azure OpenAI
 client = AzureOpenAI(
-    azure_endpoint=ENDPOINT,
-    api_key=API_KEY,
+    azure_endpoint=endpoint,
+    api_key=api_key,
     api_version="2024-05-01-preview"
 )
 
-# --- Load documents links and prompt rules ---
+# Load links e prompt
 with open("document_links.json", "r", encoding="utf-8") as f:
     doc_link_map = json.load(f)
-
 with open("prompt_rules.txt", "r", encoding="utf-8") as f:
     prompt_rules = f.read()
 
-# --- Load or create vector store ---
-if os.path.exists(VECTOR_DATA_PATH):
-    with open(VECTOR_DATA_PATH, "rb") as file:
+if os.path.exists(vector_data):
+    with open(vector_data, "rb") as file:
         vector_store = pickle.load(file)
+    print(f"Loaded vector_store with ID: {vector_store.id}")
 else:
     vector_store = load_and_upload_files(client, link_map=doc_link_map)
+    print(f"Created vector_store with ID: {vector_store.id}")
 
-# --- Load or create assistant ---
-if os.path.exists(ASSISTANT_FILENAME):
-    with open(ASSISTANT_FILENAME, "r") as file:
+
+# Assistente
+if os.path.exists(assistantFilename):
+    with open(assistantFilename, "r") as file:
         assistant_id = file.read().strip()
     exists, assistant = check_assistant_exists(client, assistant_id)
     if exists:
-        # Update assistant with latest instructions and vector store reference
         assistant = client.beta.assistants.update(
             assistant_id=assistant_id,
-            instructions=prompt_rules,
+            instructions="És um assistente virtual da seguradora Fidelidade...",
             tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}}
         )
+        print(f"Assistant updated with ID: {assistant.id} linked to vector_store ID: {vector_store.id}")
     else:
-        assistant = create_assistant(client, prompt_rules, ASSISTANT_FILENAME)
+        assistant = create_assistant(client, "És um assistente virtual da seguradora Fidelidade...", assistantFilename, vector_store)
+        print(f"Assistant created with ID: {assistant.id} linked to vector_store ID: {vector_store.id}")
 else:
-    assistant = create_assistant(client, prompt_rules, ASSISTANT_FILENAME)
+    assistant = create_assistant(client, "És um assistente virtual da seguradora Fidelidade...", assistantFilename, vector_store)
+    print(f"Assistant created with ID: {assistant.id} linked to vector_store ID: {vector_store.id}")
 
-# --- Create conversation thread ---
+
+# Sessão de conversa
 thread = create_thread(client)
 displayedMessagesIDs = []
 
-# --- Chatbot interface function ---
+# Lógica do chatbot
 def chatbot_interface(user_input, history):
+    print("Input do usuário recebido no Gradio:", user_input)
     response = send_message_to_assistant(
         client,
         thread,
         assistant,
         user_input,
+        prompt_rules,
         displayedMessagesIDs
     )
+    print("Resposta obtida para o Gradio:", response)
     history.append((user_input, response))
     return history, history
 
-# --- Gradio UI setup ---
+
+# Interface do Gradio
 with gr.Blocks() as demo:
-    gr.Markdown("🛡️ **Fidelidade Virtual Assistant**")
-    chatbot = gr.Chatbot(type="messages")  # Set to 'messages' to avoid deprecation warning
-    input_box = gr.Textbox(label="Type your question here...")
+    gr.Markdown("🛡️ **Assistente Virtual Fidelidade**")
+    chatbot = gr.Chatbot()
+    input_box = gr.Textbox(label="Escreva aqui a sua pergunta...")
 
     state = gr.State([])
 
@@ -85,4 +92,6 @@ with gr.Blocks() as demo:
 
 demo.launch()
 
+
+#Para correr: 
 #python assistente_fidelidade.py
