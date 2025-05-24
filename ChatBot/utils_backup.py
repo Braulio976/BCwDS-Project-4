@@ -163,65 +163,95 @@ def add_message_to_thread(client, thread_id, user_message):
     return message
 
 
-
-# display INTERFACE
+# Function to display messages not displayed yet
 def display_messages(client, thread, message, displayedMessagesIDs):
     messages = client.beta.threads.messages.list(thread_id=thread.id, order='asc', after=message.id)
-    collected_outputs = []  # NEU
-
     if messages:
         for message in messages:
-            if message.id not in displayedMessagesIDs and message.role == 'assistant':
-                try:
-                    messageType = message.content[0].type
-                    displayedMessagesIDs.append(message.id)
+            if message.id not in displayedMessagesIDs:
+                
+                # Check if the message is from the assistant and print it
+                if message.role == 'assistant':
+                    # Load JSON message into a Python object
+                    answer = json.loads(message.model_dump_json(indent=2))
+                    # Show answer
+                    try:
+                        messageType = message.content[0].type
+                        # Add message id  to the list as displayed
+                        displayedMessagesIDs.append(message.id)
+                        
+                        # Text message
+                        if  messageType=='text':
+                            content = 'Assistant: ' + answer['content'][0]['text']['value']
+                            content = re.sub(r"【.*?】", "", content)
 
-                    if messageType == 'text':
-                        content = message.content[0].text.value
-                        content = re.sub(r"【.*?】", "", content)
+                            
+                            # Check if there are links for file downloads
+                            file_link = None
+                            if 'annotations' in answer['content'][0]['text']:
+                                for annotation in answer['content'][0]['text']['annotations']:
+                                    if annotation['type'] == 'file_path':
+                                        file_link = annotation['text']
+                                        file_id = annotation['file_path'].get('file_id')
+                                        start_index = annotation.get('start_index')
+                                        end_index = annotation.get('end_index')
+                                        # Remove the link from the value if start_index and end_index are present
+                                        if start_index is not None and end_index is not None:
+                                            content = content[:start_index] + content[end_index:]
+                                        # Download the file
+                                        fileName = file_download(file_id, thread.id, message.id, file_link=file_link,is_image=False)
+                            
+                            # Display as Markdown
+                            display(Markdown(content))
+                        # Image
+                        elif messageType == 'image_file':
+                            # Get the ID of the image
+                            fileID = answer['content'][0]['image_file']['file_id']
+                            
+                            # Download the image
+                            fileName = file_download(fileID, thread.id, message.id, file_link='', is_image=True)
+                            
+                            # Display the image in the default image viewer
+                            image = Image.open(fileName)
+                            image.show()
+                    except:
+                        continue
 
-                        # Datei-Links entfernen, wie gehabt (optional)
-                        if hasattr(message.content[0].text, 'annotations'):
-                            for annotation in message.content[0].text.annotations:
-                                if annotation.type == 'file_path':
-                                    start = annotation.start_index
-                                    end = annotation.end_index
-                                    if start is not None and end is not None:
-                                        content = content[:start] + content[end:]
-                                    # Optional: file_download(...)
 
-                        collected_outputs.append(content)
-
-                    elif messageType == 'image_file':
-                        # Bilddateien kannst du später bei Bedarf einbauen
-                        collected_outputs.append("[Bild empfangen]")
-
-                except Exception as e:
-                    collected_outputs.append(f"[Fehler bei Nachricht: {e}]")
-
-    return "\n\n".join(collected_outputs)
-
-
-# SEND INTERFACE
+# Function to send a message to the assistant and get a response
 def send_message_to_assistant(client, thread, assistant, user_input, full_prompt, displayedMessagesIDs):
+    # Present feedback to user
     print("You:", user_input)
     print("Thinking...")
-
+    
+    # Add message to thread
     message = add_message_to_thread(client, thread.id, full_prompt)
 
+    # Run the thread with the assistant
     run = client.beta.threads.runs.create(
         thread_id=thread.id,
         assistant_id=assistant.id
     )
 
+    # Loop until the run completes or fails
     while run.status in ['queued', 'in_progress', 'cancelling']:
         time.sleep(1)
-        run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
-        # Keine Anzeige hier – wir warten auf finalen Abschluss
+        run = client.beta.threads.runs.retrieve(
+            thread_id=thread.id,
+            run_id=run.id
+        )
+        # Display any messages that are being become available
+        try:
+            display_messages(client, thread, message, displayedMessagesIDs)
+        except:
+            continue
 
+    # Handle the response from the assistant
     if run.status == 'completed':
-        return display_messages(client, thread, message, displayedMessagesIDs)
+        # Display the messages
+        display_messages(client, thread, message, displayedMessagesIDs)
+        
     elif run.status == 'requires_action':
-        return "Der Assistant benötigt zusätzliche Aktionen."
+        print("The assistant requires additional actions.")
     else:
-        return f"Status: {run.status}"
+        print(f"Run status: {run.status}")
