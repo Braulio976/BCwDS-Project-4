@@ -8,6 +8,9 @@ from openai import AzureOpenAI
 import time
 import base64
 
+#pip install streamlit openai ipython PyMuPDF python-docx
+#pip install --upgrade streamlit openai ipython PyMuPDF python-docx
+
 from utils import (
     create_assistant,
     create_thread,
@@ -17,7 +20,7 @@ from utils import (
 )
 
 # Configurations for Azure OpenAI
-api_key = 'yourAPIKey'
+api_key = 'EPg5Wj22q1CfEPQaVw3L6kVk5NVPSFOjKpNfC9mNLGr5rH5vFefFJQQJ99BDACYeBjFXJ3w3AAABACOGZ80v'
 endpoint = 'https://ai-bcds.openai.azure.com/'
 
 client = AzureOpenAI(
@@ -81,18 +84,23 @@ with open("prompt_rules.txt", "r", encoding="utf-8") as f:
 
 displayedMessagesIDs = []
 
-# Light/Dark Mode
+# Initialize session state variables
 if "dark_mode" not in st.session_state:
-    st.session_state.dark_mode = False
+    st.session_state["dark_mode"] = False
 
-toggle = st.sidebar.checkbox("🌙 Modo Escuro", value=st.session_state.dark_mode)
-st.session_state.dark_mode = toggle
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
+
+if "language" not in st.session_state:
+    st.session_state["language"] = "Português"
 
 # Styling
-bg_color = "#1e1e1e" if st.session_state.dark_mode else "#f5f5f5"
-text_color = "#f9f9f9" if st.session_state.dark_mode else "#333333"
-user_bg = "#8B0000" if st.session_state.dark_mode else "#d80027" 
-assistant_bg = "#2e2e2e" if st.session_state.dark_mode else "#ffffff"
+dark_mode = st.session_state['dark_mode']
+
+bg_color = "#1e1e1e" if dark_mode else "#f5f5f5"
+text_color = "#f9f9f9" if dark_mode else "#333333"
+user_bg = "#8B0000" if dark_mode else "#d80027"
+assistant_bg = "#2e2e2e" if dark_mode else "#ffffff"
 
 st.markdown(
     f"""
@@ -259,7 +267,6 @@ st.markdown('<div class="title">🤖 Assistente Fidelidade</div>', unsafe_allow_
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-
 # Function to handle chatbot response
 def chatbot_response(user_input):
     full_prompt = f"{prompt_rules}\n\nUser question: {user_input}"
@@ -296,12 +303,52 @@ faq_questions = [
     "Como posso abrir uma conta poupança?",
     "Quais são os benefícios do My Savings?",
     "Como funciona o seguro automóvel?",
+    "Quais são os benefícios fiscais que o cliente pode obter com um PPR?",
+    "Em que situações o cliente pode resgatar o PPR sem penalizações?",
+    "O My Savings é indicado para que tipo de cliente?"
 ]
 
-with st.form(key="input_form", clear_on_submit=True):
-    user_input = st.text_input("Digite a sua pergunta aqui:", placeholder="Ex: Como posso abrir uma conta poupança?")
-    send_btn = st.form_submit_button("Enviar")
+st.markdown(
+    """
+    <style>
+    /* Fundo vermelho para a sidebar */
+    .css-1d391kg {
+        background-color: #b22222 !important;  /* firebrick red */
+        color: white;
+        padding: 1rem;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    /* Botão no sidebar estilizado */
+    .sidebar .stButton > button {
+        background-color: white;
+        color: #b22222;
+        font-weight: bold;
+        border-radius: 5px;
+        padding: 10px 20px;
+        border: none;
+        width: 100%;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+    .sidebar .stButton > button:hover {
+        background-color: #8b1a1a;
+        color: white;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
+# Initialize session state for messages
+if 'messages' not in st.session_state:
+    st.session_state['messages'] = []
+
+def reset_chat():
+    st.session_state['messages'] = []
+
+with st.form(key="input_form", clear_on_submit=True):
+    user_input = st.text_input("Escreva a sua pergunta:", placeholder="Ex: Quais são os benefícios do produto My Savings?")
+    send_btn = st.form_submit_button("Enviar")
     if send_btn and user_input.strip() != "":
         typing_placeholder = st.empty()
         for i in range(6):
@@ -317,18 +364,18 @@ with st.form(key="input_form", clear_on_submit=True):
 
 display_chat()
 
-st.markdown("### Perguntas frequentes")
-cols = st.columns(len(faq_questions))
-for i, question in enumerate(faq_questions):
+# Display FAQ questions
+top_questions = faq_questions[:3]
+bottom_questions = faq_questions[3:]
+
+cols = st.columns(3)
+for i, question in enumerate(top_questions):
     if cols[i].button(question):
         typing_placeholder = st.empty()
-
-        # Thinking
         for j in range(6):
             dots = "." * ((j % 3) + 1)
             typing_placeholder.markdown(f"🤖 Assistente está a pensar{dots}")
             time.sleep(0.4)
-
         typing_placeholder.empty()
 
         add_message("user", question)
@@ -336,56 +383,220 @@ for i, question in enumerate(faq_questions):
         add_message("assistant", answer)
         st.experimental_rerun()
 
-# Sidebar styling
+cols = st.columns(3)
+for i, question in enumerate(bottom_questions):
+    if cols[i].button(question):
+        typing_placeholder = st.empty()
+        for j in range(6):
+            dots = "." * ((j % 3) + 1)
+            typing_placeholder.markdown(f"🤖 Assistente está a pensar{dots}")
+            time.sleep(0.4)
+        typing_placeholder.empty()
+
+        add_message("user", question)
+        answer = chatbot_response(question)
+        add_message("assistant", answer)
+        st.experimental_rerun()
+
 st.markdown(
     """
     <style>
-    /* Fundo da sidebar inteira */
-    section[data-testid="stSidebar"] {
-        background-color: #d80027 !important;
+    /* Sidebar wrapper */
+    [data-testid="stSidebar"] {
+        background-color: #b22222 !important;
+        padding: 1.5rem 1rem;
+        color: white;
     }
 
-    /* Conteúdo da sidebar */
-    .sidebar .sidebar-content {
-        color: white !important;
-        padding: 20px;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    /* Títulos na sidebar */
+    /* Título */
     .sidebar-title {
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin-bottom: 1.2rem;
+        text-align: center;
+        color: white;
+    }
+
+    /* Seção padrão */
+    .sidebar-section {
+        margin-bottom: 1.5rem;
+    }
+
+    /* Atalho estilizado */
+    .sidebar-shortcut {
+        display: block;
+        background-color: #8b1a1a;
+        color: white;
+        font-weight: 600;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        text-decoration: none;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .sidebar-shortcut:hover {
+        background-color: white;
+        color: #b22222;
+        text-decoration: none;
+    }
+
+    /* Botões */
+    .stButton > button {
+        background-color: white;
+        color: #b22222;
         font-weight: 700;
-        font-size: 22px;
-        margin-bottom: 15px;
+        border: none;
+        border-radius: 8px;
+        width: 100%;
+        padding: 0.6rem 1rem;
+        margin-top: 0.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .stButton > button:hover {
+        background-color: #8b1a1a;
         color: white;
     }
 
-    /* Texto da sidebar */
-    .sidebar-text {
-        font-size: 16px;
-        line-height: 1.5;
+    /* Links */
+    .support-link {
         color: white;
+        background-color: transparent;
+        border: 2px solid white;
+        padding: 8px 12px;
+        border-radius: 8px;
+        display: block;
+        text-align: center;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
     }
 
-    /* Texto forte/em */
-    .sidebar-text strong, .sidebar-text em {
-        color: #fff9f9;
+    .support-link:hover {
+        background-color: white;
+        color: #b22222;
+    }
+
+    /* Separadores */
+    hr {
+        border: 0.5px solid #f5f5f5;
+        margin: 1rem 0;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# Content of the sidebar
-st.sidebar.markdown('<div class="sidebar-title">Instruções</div>', unsafe_allow_html=True)
-st.sidebar.markdown("""
-    <div class="sidebar-text">
-    - Digite sua pergunta e clique em <em>Enviar</em>.<br>
-    - Para terminar, escreva <strong>Obrigado, até à próxima!</strong>.<br>
-    - Para iniciar nova conversa, escreva <strong>Nova Conversa</strong>.<br>
-    - Para dúvidas técnicas, contacte a equipa especializada.
-    </div>
-""", unsafe_allow_html=True)
+def reset_chat():
+    st.session_state["messages"] = []
+
+def clear_history():
+    st.session_state["messages"] = []
+
+query_params = st.query_params
+if "reset" in query_params:
+    reset_chat()
+    st.query_params = {}
+    st.experimental_rerun()
+
+# Sidebar
+with st.sidebar:
+    # Header
+    st.markdown(
+        '<div style="font-size: 26px; font-weight: 1000; color: white; text-align: center; margin-bottom: 1rem;">Menu</div>',
+        unsafe_allow_html=True
+    )
+
+    # Language selection
+    st.markdown(
+        '<div style="margin-bottom: 0.3rem; font-size: 16px; font-weight: 600; color: white;">Idioma</div>',
+        unsafe_allow_html=True
+    )
+    language = st.selectbox(
+        "", 
+        options=["Português", "Inglês"],
+        index=["Português", "Inglês"].index(st.session_state["language"]),
+    )
+    if language != st.session_state["language"]:
+        st.session_state["language"] = language
+        st.experimental_rerun()
+
+    # Visualization mode
+    st.markdown(
+        """
+        <style>
+        /* Força o texto do checkbox a ficar branco */
+        label[data-testid="stCheckbox"] > div:first-child,
+        label[data-testid="stCheckbox"] span {
+            color: white !important;
+            font-weight: 500 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+        /* Ajusta o tamanho do quadradinho */
+        label[data-testid="stCheckbox"] input[type="checkbox"] {
+            width: 18px !important;
+            height: 18px !important;
+            cursor: pointer !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    dark_mode_checkbox = st.checkbox("Ativar modo escuro", value=st.session_state["dark_mode"])
+
+    if dark_mode_checkbox != st.session_state["dark_mode"]:
+        st.session_state["dark_mode"] = dark_mode_checkbox
+        st.experimental_rerun()
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    # Conversation options
+    st.markdown(
+        '<div style="margin-bottom: 0.3rem; font-size: 16px; font-weight: 600; color: white;">Conversa</div>',
+        unsafe_allow_html=True
+    )
+    if st.button("Novo Chat"):
+        reset_chat()
+        st.experimental_rerun()
+
+    if st.button("Limpar Histórico"):
+        clear_history()
+        st.experimental_rerun()
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    st.markdown(
+        '<div style="margin-bottom: 0.3rem; font-size: 16px; font-weight: 600; color: white;">Suporte</div>',
+        unsafe_allow_html=True
+    )
+    if st.button("Contactar Suporte"):
+        st.markdown(
+            '<meta http-equiv="refresh" content="0; url=mailto:suporte@empresa.com">',
+            unsafe_allow_html=True
+        )
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    st.markdown(
+        '<div style="font-weight:600; font-size:16px; margin-bottom:0.5rem; color: white;">Instruções:</div>',
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        """
+        <div style="color: white; font-size: 14px;">
+        - Escreva a pergunta e clique em Enviar.<br>
+        - Para iniciar nova conversa, clique em <strong>Novo Chat</strong>.<br>
+        - Para dúvidas técnicas, contacte o suporte.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 def img_to_base64(img_path):
     with open(img_path, "rb") as img_file:
@@ -413,7 +624,6 @@ st.markdown(f"""
         <img src="{img_b64}" alt="Logo Fidelidade"/>
     </div>
 """, unsafe_allow_html=True)
-
 
 # TO RUN THIS: 
 #cd /Users/anaazinheira/Documents/BCwDS-Project-4/AssistantVirtual - TÊM QUE MUDAR A DIRETRIZ PARA O VOSSO PC 

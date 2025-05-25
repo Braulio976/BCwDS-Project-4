@@ -115,49 +115,56 @@ def load_and_upload_files(client, link_map=None):
         print("No documents found.")
         return None
 
+    # Create a new vector store with the client
     vector_store = client.vector_stores.create(name="Documents Vector Store")
-    print("✅ Vector store criado:", vector_store.id)
 
     all_file_ids = []
 
-    # PDF
+    # Process PDF files
     for path in pdf_files:
+        # Extract text from PDF (optionally using link_map)
         text = extract_text_from_pdf(path, link_map)
         temp_txt_path = path + ".txt"
+        # Save extracted text to a temporary .txt file
         with open(temp_txt_path, "w", encoding="utf-8") as f:
             f.write(text)
-        # ✅ Carregar para a conta OpenAI com purpose="assistants"
+        # Upload the temporary .txt file to the client files for assistants
         with open(temp_txt_path, "rb") as f:
             file = client.files.create(file=f, purpose="assistants")
             all_file_ids.append(file.id)
+        # Remove the temporary .txt file after upload
         os.remove(temp_txt_path)
-        print("📄 PDF carregado:", path)
+        print("PDF uploaded:", path)
 
-    # DOCX
+    # Process DOCX files
     for path in docx_files:
+        # Extract text from DOCX (optionally using link_map)
         text = extract_text_from_docx(path, link_map)
         temp_txt_path = path + ".txt"
+        # Save extracted text to a temporary .txt file
         with open(temp_txt_path, "w", encoding="utf-8") as f:
             f.write(text)
+        # Upload the temporary .txt file to the client files for assistants
         with open(temp_txt_path, "rb") as f:
             file = client.files.create(file=f, purpose="assistants")
             all_file_ids.append(file.id)
+        # Remove the temporary .txt file after upload
         os.remove(temp_txt_path)
-        print("📄 DOCX carregado:", path)
+        print("DOCX uploaded:", path)
 
-    # ✅ Associar todos os ficheiros ao vector store
+    # If there are any uploaded files, associate them with the vector store
     if all_file_ids:
         client.beta.vector_stores.file_batches.upload_and_poll(
             vector_store_id=vector_store.id,
             file_ids=all_file_ids
         )
-        print("✅ Ficheiros associados ao vector store.")
+        print("Files associated with the vector store.")
 
-    # Guardar o vector_store localmente
+    # Save the vector store locally as a pickle file
     with open("vector_store.pkl", "wb") as file:
         pickle.dump(vector_store, file)
 
-    print("💾 Vector store guardado com ID:", vector_store.id)
+    print("Vector store saved with ID:", vector_store.id)
     return vector_store
 
 # Function to add a message to the thread
@@ -167,7 +174,6 @@ def add_message_to_thread(client, thread_id, user_message):
         role="user",
         content=user_message
     )
-    print(f"Mensagem adicionada ao thread {thread_id}, ID da mensagem: {message.id}")
     return message
 
 # Function to display messages not displayed yet
@@ -191,7 +197,6 @@ def display_messages(client, thread, message, displayedMessagesIDs):
                         if  messageType=='text':
                             content = 'Assistant: ' + answer['content'][0]['text']['value']
                             content = re.sub(r"【.*?】", "", content)
-
                             
                             # Check if there are links for file downloads
                             file_link = None
@@ -230,31 +235,31 @@ def send_message_to_assistant(client, thread, assistant, user_input, prompt_rule
 
     print("User input:", user_input)
     full_prompt = f"{prompt_rules}\n\nUser question: {user_input}"
-    print("Full prompt enviado ao thread:", full_prompt)
+    print("Full prompt sent to thread:", full_prompt)
 
-    # Enviar mensagem corretamente via API
+    # Send message properly via API
     client.beta.threads.messages.create(
         thread_id=thread.id,
         role="user",
         content=full_prompt
     )
 
-    # Criar o run
+    # Create the run
     run = client.beta.threads.runs.create(
         thread_id=thread.id,
         assistant_id=assistant.id
     )
-    print("Run criado, ID:", run.id)
+    print("Run created, ID:", run.id)
 
-    # Aguardar conclusão
+    # Wait for completion
     while run.status in ['queued', 'in_progress', 'cancelling']:
-        print("Status do run:", run.status)
+        print("Run status:", run.status)
         time.sleep(1)
         run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
 
-    print("Run finalizado com status:", run.status)
+    print("Run finished with status:", run.status)
 
-    # Extrair resposta do assistente
+    # Extract assistant's response
     if run.status == 'completed':
         messages = client.beta.threads.messages.list(thread_id=thread.id).data
         assistant_msgs = [m for m in messages if m.role == "assistant"]
@@ -265,11 +270,12 @@ def send_message_to_assistant(client, thread, assistant, user_input, prompt_rule
             for block in last_msg.content:
                 if block.type == "text":
                     full_text += block.text.value + "\n"
-            print("Resposta do assistente:", full_text.strip())
+            print("Assistant response:", full_text.strip())
             return full_text.strip()
         else:
-            print("Nenhuma mensagem do assistente encontrada.")
-            return "Sem resposta do assistente."
+            print("No assistant message found.")
+            return "No assistant response."
     else:
-        print(f"Erro ou estado inesperado: {run.status}")
-        return f"Erro: estado do run {run.status}"
+        print(f"Error or unexpected state: {run.status}")
+        return f"Error: run status {run.status}"
+
