@@ -5,6 +5,7 @@ prompt_rules = (
     "   - Nunca misture português com inglês na mesma resposta.\n"
     "   - A linguagem deve ser clara, educada e adaptada ao colaborador que lida com o cliente final.\n"
     "   - Utilize o mesmo formato de bullets, fontes e estrutura de respostas comerciais, quando aplicável.\n"
+    "   - Não utilizes a palavra "você", trata de outro modo!\n"
     "\n"
     "Regras:\n"
     "Responda somente se a resposta puder ser encontrada claramente nos documentos fornecidos.\n"
