@@ -106,8 +106,6 @@ def find_documents(folder="documents"):
     return pdf_files, docx_files
 
 
-
-# Main function to load and upload files
 def load_and_upload_files(client, link_map=None):
     print("Searching './documents' for PDF and DOCX files...")
     pdf_files, docx_files = find_documents("documents")
@@ -118,40 +116,49 @@ def load_and_upload_files(client, link_map=None):
         return None
 
     vector_store = client.vector_stores.create(name="Documents Vector Store")
-    print("Vector store created:", vector_store)
+    print("✅ Vector store criado:", vector_store.id)
 
+    all_file_ids = []
+
+    # PDF
     for path in pdf_files:
         text = extract_text_from_pdf(path, link_map)
         temp_txt_path = path + ".txt"
         with open(temp_txt_path, "w", encoding="utf-8") as f:
             f.write(text)
+        # ✅ Carregar para a conta OpenAI com purpose="assistants"
         with open(temp_txt_path, "rb") as f:
-            client.vector_stores.file_batches.upload_and_poll(
-                vector_store_id=vector_store.id,
-                files=[f]
-            )
+            file = client.files.create(file=f, purpose="assistants")
+            all_file_ids.append(file.id)
         os.remove(temp_txt_path)
-        print("Uploaded PDF:", path)
+        print("📄 PDF carregado:", path)
 
+    # DOCX
     for path in docx_files:
         text = extract_text_from_docx(path, link_map)
         temp_txt_path = path + ".txt"
         with open(temp_txt_path, "w", encoding="utf-8") as f:
             f.write(text)
         with open(temp_txt_path, "rb") as f:
-            client.vector_stores.file_batches.upload_and_poll(
-                vector_store_id=vector_store.id,
-                files=[f]
-            )
+            file = client.files.create(file=f, purpose="assistants")
+            all_file_ids.append(file.id)
         os.remove(temp_txt_path)
-        print("Uploaded DOCX:", path)
+        print("📄 DOCX carregado:", path)
 
+    # ✅ Associar todos os ficheiros ao vector store
+    if all_file_ids:
+        client.beta.vector_stores.file_batches.upload_and_poll(
+            vector_store_id=vector_store.id,
+            file_ids=all_file_ids
+        )
+        print("✅ Ficheiros associados ao vector store.")
+
+    # Guardar o vector_store localmente
     with open("vector_store.pkl", "wb") as file:
         pickle.dump(vector_store, file)
-    print("Vector store saved.")
 
+    print("💾 Vector store guardado com ID:", vector_store.id)
     return vector_store
-
 
 # Function to add a message to the thread
 def add_message_to_thread(client, thread_id, user_message):
@@ -225,14 +232,21 @@ def send_message_to_assistant(client, thread, assistant, user_input, prompt_rule
     full_prompt = f"{prompt_rules}\n\nUser question: {user_input}"
     print("Full prompt enviado ao thread:", full_prompt)
 
-    add_message_to_thread(client, thread.id, full_prompt)
+    # Enviar mensagem corretamente via API
+    client.beta.threads.messages.create(
+        thread_id=thread.id,
+        role="user",
+        content=full_prompt
+    )
 
+    # Criar o run
     run = client.beta.threads.runs.create(
         thread_id=thread.id,
         assistant_id=assistant.id
     )
     print("Run criado, ID:", run.id)
 
+    # Aguardar conclusão
     while run.status in ['queued', 'in_progress', 'cancelling']:
         print("Status do run:", run.status)
         time.sleep(1)
@@ -240,6 +254,7 @@ def send_message_to_assistant(client, thread, assistant, user_input, prompt_rule
 
     print("Run finalizado com status:", run.status)
 
+    # Extrair resposta do assistente
     if run.status == 'completed':
         messages = client.beta.threads.messages.list(thread_id=thread.id).data
         assistant_msgs = [m for m in messages if m.role == "assistant"]
@@ -258,4 +273,3 @@ def send_message_to_assistant(client, thread, assistant, user_input, prompt_rule
     else:
         print(f"Erro ou estado inesperado: {run.status}")
         return f"Erro: estado do run {run.status}"
-
