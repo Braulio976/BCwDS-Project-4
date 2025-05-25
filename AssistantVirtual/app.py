@@ -20,7 +20,7 @@ from utils import (
 )
 
 # Configurations for Azure OpenAI
-api_key = 'EPg5Wj22q1CfEPQaVw3L6kVk5NVPSFOjKpNfC9mNLGr5rH5vFefFJQQJ99BDACYeBjFXJ3w3AAABACOGZ80v'
+api_key = 'yourAPIKey'
 endpoint = 'https://ai-bcds.openai.azure.com/'
 
 client = AzureOpenAI(
@@ -311,14 +311,12 @@ faq_questions = [
 st.markdown(
     """
     <style>
-    /* Fundo vermelho para a sidebar */
     .css-1d391kg {
         background-color: #b22222 !important;  /* firebrick red */
         color: white;
         padding: 1rem;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-    /* Botão no sidebar estilizado */
     .sidebar .stButton > button {
         background-color: white;
         color: #b22222;
@@ -408,7 +406,6 @@ st.markdown(
         color: white;
     }
 
-    /* Título */
     .sidebar-title {
         font-size: 1.8rem;
         font-weight: 800;
@@ -417,7 +414,6 @@ st.markdown(
         color: white;
     }
 
-    /* Seção padrão */
     .sidebar-section {
         margin-bottom: 1.5rem;
     }
@@ -442,7 +438,6 @@ st.markdown(
         text-decoration: none;
     }
 
-    /* Botões */
     .stButton > button {
         background-color: white;
         color: #b22222;
@@ -461,7 +456,6 @@ st.markdown(
         color: white;
     }
 
-    /* Links */
     .support-link {
         color: white;
         background-color: transparent;
@@ -480,7 +474,6 @@ st.markdown(
         color: #b22222;
     }
 
-    /* Separadores */
     hr {
         border: 0.5px solid #f5f5f5;
         margin: 1rem 0;
@@ -528,7 +521,6 @@ with st.sidebar:
     st.markdown(
         """
         <style>
-        /* Força o texto do checkbox a ficar branco */
         label[data-testid="stCheckbox"] > div:first-child,
         label[data-testid="stCheckbox"] span {
             color: white !important;
@@ -537,7 +529,6 @@ with st.sidebar:
             align-items: center !important;
             gap: 8px !important;
         }
-        /* Ajusta o tamanho do quadradinho */
         label[data-testid="stCheckbox"] input[type="checkbox"] {
             width: 18px !important;
             height: 18px !important;
@@ -609,10 +600,10 @@ st.markdown(f"""
     <style>
     .image-container {{
         display: flex;
-        justify-content: center;  /* centraliza horizontalmente */
-        align-items: center;      /* centraliza verticalmente */
-        height: 250px;            /* altura do container */
-        border: 1px solid transparent; /* opcional, para testar o contêiner */
+        justify-content: center;  
+        align-items: center;      
+        height: 250px;          
+        border: 1px solid transparent; 
     }}
     .image-container img {{
         max-height: 100%;
