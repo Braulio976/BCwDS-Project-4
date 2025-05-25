@@ -345,7 +345,7 @@ def reset_chat():
     st.session_state['messages'] = []
 
 with st.form(key="input_form", clear_on_submit=True):
-    user_input = st.text_input("Escreva a sua pergunta:", placeholder="Ex: Quais são os benefícios do produto My Savings?")
+    user_input = st.text_input("Escreva a sua pergunta:", placeholder="Ex: Como explicar ao cliente o conceito de investimento com capital protegido?")
     send_btn = st.form_submit_button("Enviar")
     if send_btn and user_input.strip() != "":
         typing_placeholder = st.empty()
@@ -361,6 +361,11 @@ with st.form(key="input_form", clear_on_submit=True):
         st.experimental_rerun()
 
 display_chat()
+
+st.markdown(
+    '<h3 style="color: #333333; margin-bottom: 1rem;">Perguntas Frequentes</h3>',
+    unsafe_allow_html=True
+)
 
 # Display FAQ questions
 top_questions = faq_questions[:3]
@@ -518,34 +523,57 @@ with st.sidebar:
         st.experimental_rerun()
 
     # Visualization mode
+    if "dark_mode" not in st.session_state:
+        st.session_state["dark_mode"] = False
+
+    def toggle_dark_mode():
+        st.session_state["dark_mode"] = not st.session_state["dark_mode"]
+        st.experimental_rerun()
+
+    btn_label = "Ativar modo escuro" if not st.session_state["dark_mode"] else "☀️ Desativar modo escuro"
+
+    if not st.session_state["dark_mode"]:
+        btn_bg_color = "#ffffff"
+        btn_text_color = "#222222"
+    else:
+        btn_bg_color = "#b22222"
+        btn_text_color = "#ffffff"
+
     st.markdown(
-        """
+        f"""
         <style>
-        label[data-testid="stCheckbox"] > div:first-child,
-        label[data-testid="stCheckbox"] span {
-            color: white !important;
-            font-weight: 500 !important;
-            display: flex !important;
-            align-items: center !important;
-            gap: 8px !important;
-        }
-        label[data-testid="stCheckbox"] input[type="checkbox"] {
-            width: 18px !important;
-            height: 18px !important;
-            cursor: pointer !important;
-        }
+        .toggle-btn {{
+            background-color: {btn_bg_color};
+            color: {btn_text_color};
+            font-weight: 600;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 30px; /* pill shape */
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+            font-size: 18px;
+            user-select: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.3s ease, color 0.3s ease, transform 0.1s ease;
+        }}
+        .toggle-btn:hover {{
+            background-color: {'#f2f2f2' if not st.session_state["dark_mode"] else '#8b1a1a'};
+        }}
+        .toggle-btn:active {{
+            transform: scale(0.95);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }}
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    dark_mode_checkbox = st.checkbox("Ativar modo escuro", value=st.session_state["dark_mode"])
-
-    if dark_mode_checkbox != st.session_state["dark_mode"]:
-        st.session_state["dark_mode"] = dark_mode_checkbox
-        st.experimental_rerun()
+    if st.button(btn_label, key="dark_mode_btn", on_click=toggle_dark_mode):
+        pass
 
     st.markdown("<hr>", unsafe_allow_html=True)
+
 
     # Conversation options
     st.markdown(
